@@ -98,9 +98,8 @@ class ViewController: UIViewController, LoginViewDelegate, RegisterViewDelegate,
 
 
     // MARK: - RegisterViewDelegate Methods
-
     func didTapRegisterButton(name: String, email: String, password: String) {
-        print("attempting to register")
+        print("Attempting to register")
         Auth.auth().createUser(withEmail: email, password: password) { [weak self] authResult, error in
             if let error = error {
                 self?.showAlert(title: "Registration Error", message: error.localizedDescription)
@@ -117,6 +116,9 @@ class ViewController: UIViewController, LoginViewDelegate, RegisterViewDelegate,
                         print("Error saving user data: \(error)")
                         self?.showAlert(title: "Database Error", message: error.localizedDescription)
                     } else {
+                        print("User successfully registered. Fetching contacts...")
+                        // Fetch contacts after registering
+                        self?.fetchContacts()
                         self?.dismiss(animated: true) {
                             self?.showMainView()
                         }
@@ -127,7 +129,6 @@ class ViewController: UIViewController, LoginViewDelegate, RegisterViewDelegate,
     }
 
     // MARK: - MainViewDelegate Methods
-
     func didTapLogoutButton() {
         do {
             try Auth.auth().signOut()
@@ -161,16 +162,13 @@ class ViewController: UIViewController, LoginViewDelegate, RegisterViewDelegate,
             
             print("Fetched contacts snapshot: \(documents.count) documents.")
             self?.contacts.removeAll()
-            // # of processed contacts
             var processedCount = 0
             
             for document in documents {
                 let data = document.data()
                 let userId = document.documentID
                 
-                // exclude current user
                 if userId == currentUserId {
-                    // increment even if skipped to keep track
                     processedCount += 1
                     continue
                 }
@@ -180,12 +178,11 @@ class ViewController: UIViewController, LoginViewDelegate, RegisterViewDelegate,
                     self?.fetchLastMessage(with: userId) { lastMessage, lastMessageDate in
                         let contact = Contact(id: userId, name: name, email: email, lastMessage: lastMessage, lastMessageDate: lastMessageDate)
                         self?.contacts.append(contact)
-                        print("Added contact: \(name), last message: \(lastMessage ?? "No message")")
-                        
-                        // incrementing processed count & check if all contacts are processed
                         processedCount += 1
-                        // showing main view only after all contacts are processed
+                        
+                        // Sort contacts alphabetically by name
                         if processedCount == documents.count {
+                            self?.contacts.sort { $0.name < $1.name }
                             self?.showMainView()
                         }
                     }
@@ -195,7 +192,6 @@ class ViewController: UIViewController, LoginViewDelegate, RegisterViewDelegate,
             }
         }
     }
-
 
     private func fetchLastMessage(with userId: String, completion: @escaping (String?, Date?) -> Void) {
         guard let currentUserId = Auth.auth().currentUser?.uid else { return }
